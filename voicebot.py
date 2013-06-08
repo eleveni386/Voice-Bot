@@ -12,6 +12,7 @@ import urllib2
 import wave
 import os
 import jieba
+import sqlite3
 
 CHUNK = 1024
 FORMAT = pyaudio.paInt16
@@ -22,28 +23,21 @@ WAVE_OUTPUT_FILENAME = "output.wav"
 FLAC_OUTPUT_FILENAME = "output.flc"
 
 p = pyaudio.PyAudio()
-
-common = {(u"浏览器", u"上网"):"google-chrome",\
-          (u"百度",u"baidu"):"google-chrome http://www.baidu.com",\
-          (u"谷歌", u"google"):"google-chrome http://www.google.com.hk",\
-          (u"聊天"):"pidgin",\
-          (u"歌", u"听歌", u"音乐", u"放歌"):"google-chrome http://play.baidu.com",\
-          (u"视频", u"电影"):"google-chrome http://www.tudou.com"
-          }
+sql = sqlite3.connect("./voicebot.db")
+sql_cur = sql.cursor()
 
 def search_and_cmd(keywd):
-
-    def grep(x,y):
-        for i in y:
-            if x in i:return i
-
+    grep = lambda x, y: x in y and x
     print "请稍等,正在分析你的指令..."
+    sql_cur.execute("select question, command from voicebot where question = '%s'"%(keywd))
+    result = sql_cur.fetchall()[0]
+    print result
     print "你的指令是:", ','.join(jieba.cut(keywd))
-    cmd = [ grep(i, common.keys()) for i in jieba.cut(keywd) ]
+    cmd = [ grep(i, result) for i in jieba.cut(keywd) ]
     if len(cmd) > 0:
         for i in cmd:
             print i
-            if i: os.popen(common[i]);print "已经完成你的指令"
+            if i: os.popen(result[1]);print "已经完成你的指令"
     else:print "我无法理解你的指令,或者数据库内没有这个指令的记录"
 
 def VoicetoString(upfile):
